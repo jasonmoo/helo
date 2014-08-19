@@ -1,4 +1,4 @@
-package main
+package helo
 
 import (
 	"bufio"
@@ -38,28 +38,30 @@ const (
 )
 
 var (
+	// REPLY CODES
+	// http://tools.ietf.org/html/rfc821#page-35
 	response_codes = map[Status]string{
-		StatusSystemStatus:                      "211 System status, or system help reply",
-		StatusHelpMessage:                       "214 Help message",
-		StatusServiceReady:                      "220 %s Service ready",
-		StatusServiceClosingTransmissionChannel: "221 %s Service closing transmission channel",
-		StatusOk:                                                  "250 OK",
-		StatusUserNotLocalWillForwardTo:                           "251 User not local; will forward to %s",
-		StatusStartMailInputEndWith:                               "354 Start mail input; end with <CRLF>.<CRLF>",
-		StatusServiceNotAvailable:                                 "421 %s Service not available",                              // closing transmission channel [This may be a reply to any command if the service knows it must shut down]
-		StatusRequestedMailActionNotTakenMailboxUnavailable:       "450 Requested mail action not taken: mailbox unavailable ", // [E.g., mailbox busy]
-		StatusRequestedActionAbortedInProcessing:                  "451 Requested action aborted: error in processing",
-		StatusRequestedActionNotTakenInsufficientSystemStorage:    "452 Requested action not taken: insufficient system storage",
-		StatusSyntaxErrorCommandUnrecognized:                      "500 Syntax error, command unrecognized", // [This may include errors such as command line too long]
-		StatusSyntaxErrorInParametersOrArguments:                  "501 Syntax error in parameters or arguments",
-		StatusCommandNotImplemented:                               "502 Command not implemented",
-		StatusBadSequenceOfCommands:                               "503 Bad sequence of commands",
-		StatusCommandParameterNotImplemented:                      "504 Command parameter not implemented",
-		StatusRequestedActionNotTakenMailboxUnavailable:           "550 Requested action not taken: mailbox unavailable", // [E.g., mailbox not found, no access]
-		StatusUserNotLocalPleaseTry:                               "551 User not local; please try %s",
-		StatusRequestedMailActionAbortedExceededStorageAllocation: "552 Requested mail action aborted: exceeded storage allocation",
-		StatusRequestedActionNotTakenMailboxNameNotAllowed:        "553 Requested action not taken: mailbox name not allowed", // Requested action not taken: mailbox name not allowed
-		StatusTransactionFailed:                                   "554 Transaction failed",
+		StatusSystemStatus:                      "211 System status, or system help reply\r\n",
+		StatusHelpMessage:                       "214 Help message\r\n",
+		StatusServiceReady:                      "220 helo Service ready\r\n",
+		StatusServiceClosingTransmissionChannel: "221 helo Service closing transmission channel\r\n",
+		StatusOk:                                                  "250 OK\r\n",
+		StatusUserNotLocalWillForwardTo:                           "251 User not local; will forward to %s\r\n",
+		StatusStartMailInputEndWith:                               "354 Start mail input; end with <CRLF>.<CRLF>\r\n",
+		StatusServiceNotAvailable:                                 "421 helo Service not available\r\n",                           // closing transmission channel [This may be a reply to any command if the service knows it must shut down]
+		StatusRequestedMailActionNotTakenMailboxUnavailable:       "450 Requested mail action not taken: mailbox unavailable\r\n", // [E.g., mailbox busy]
+		StatusRequestedActionAbortedInProcessing:                  "451 Requested action aborted: error in processing\r\n",
+		StatusRequestedActionNotTakenInsufficientSystemStorage:    "452 Requested action not taken: insufficient system storage\r\n",
+		StatusSyntaxErrorCommandUnrecognized:                      "500 Syntax error, command unrecognized\r\n", // [This may include errors such as command line too long]
+		StatusSyntaxErrorInParametersOrArguments:                  "501 Syntax error in parameters or arguments\r\n",
+		StatusCommandNotImplemented:                               "502 Command not implemented\r\n",
+		StatusBadSequenceOfCommands:                               "503 Bad sequence of commands\r\n",
+		StatusCommandParameterNotImplemented:                      "504 Command parameter not implemented\r\n",
+		StatusRequestedActionNotTakenMailboxUnavailable:           "550 Requested action not taken: mailbox unavailable\r\n", // [E.g., mailbox not found, no access]
+		StatusUserNotLocalPleaseTry:                               "551 User not local; please try %s\r\n",
+		StatusRequestedMailActionAbortedExceededStorageAllocation: "552 Requested mail action aborted: exceeded storage allocation\r\n",
+		StatusRequestedActionNotTakenMailboxNameNotAllowed:        "553 Requested action not taken: mailbox name not allowed\r\n", // Requested action not taken: mailbox name not allowed
+		StatusTransactionFailed:                                   "554 Transaction failed\r\n",
 	}
 )
 
@@ -73,5 +75,13 @@ func (w *Writer) WriteStatus(code Status) error {
 }
 func (w *Writer) WriteStatusf(code Status, val string) error {
 	_, err := fmt.Fprintf(w, response_codes[code], val)
+	return err
+}
+func (w *Writer) WriteContinuedReply(code Status, message string) error {
+	_, err := fmt.Fprintf(w, "%d-%s\r\n", code, message)
+	return err
+}
+func (w *Writer) WriteReply(code Status, message string) error {
+	_, err := fmt.Fprintf(w, "%d %s\r\n", code, message)
 	return err
 }

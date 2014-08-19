@@ -1,36 +1,87 @@
-package main
+package helo
 
 import (
 	"crypto/rand"
 	"crypto/tls"
-	"flag"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
-	"runtime"
+	"os"
 )
 
-// SMTP by default uses TCP port 25.
-// The protocol for mail submission is the same,
-// but uses port 587. SMTP connections secured by SSL,
-// known as SMTPS, default to port 465.
+type (
+	SmtpServer struct {
+		host    string
+		logger  *log.Logger
+		running bool
+	}
+	SmtpsServer struct {
+		*SmtpServer
+		cert string
+		key  string
+	}
+)
+
 var (
-	dev = flag.Bool("dev", false, "output dev signals")
-
-	smtp_port  = flag.String("smtp", ":25", "host:port to listen on")
-	smtps_port = flag.String("smtps", ":465", "host:port to listen on")
+	AlreadyRunningError = errors.New("helo already running")
 )
 
-func init() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+func NewSmtpServer(host string) *SmtpServer {
+	return &SmtpServer{
+		host:   host,
+		logger: log.New(os.Stdout, "helo: ", log.LstdFlags|log.Llongfile),
+	}
 }
 
-func main() {
+func NewSmtpsServer(host, cert, key string) *SmtpsServer {
+	return &SmtpsServer{NewSmtpServer(host), cert, key}
+}
 
-	certificate, err := tls.LoadX509KeyPair("cert/cert.pem", "cert/key.pem")
+func (s *SmtpServer) SetLogger(logger *log.Logger) {
+	s.logger = logger
+}
+
+func (s *SmtpServer) Start() error {
+
+	if s.running {
+		return AlreadyRunningError
+	}
+
+	l, err := net.Listen("tcp", s.host)
 	if err != nil {
-		log.Fatal(err)
+		return err
+	}
+
+	s.logger.Println("helo starting up.")
+	s.logger.Printf("Listening on %s", s.host)
+
+	s.running = true
+	go func() {
+		for s.running {
+			conn, err := l.Accept()
+			if err != nil {
+				s.logger.Println(err)
+				continue
+			}
+			go s.handleSession(conn)
+		}
+	}()
+
+	return nil
+
+}
+
+func (s *SmtpsServer) StartTLS() error {
+
+	if s.running {
+		return AlreadyRunningError
+	}
+
+	certificate, err := tls.LoadX509KeyPair(s.cert, s.key)
+	if err != nil {
+		return err
 	}
 
 	config := &tls.Config{
@@ -39,85 +90,147 @@ func main() {
 		ClientAuth:   tls.NoClientCert,
 	}
 
-	tlsl, err := tls.Listen("tcp", *smtps_port, config)
+	tlsl, err := tls.Listen("tcp", s.host, config)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	s.logger.Println("helo starting up.")
+	s.logger.Printf("Listening on %s", s.host)
+
+	s.running = true
+
 	go func() {
 		for {
 			conn, err := tlsl.Accept()
 			if err != nil {
-				log.Println(err)
+				s.logger.Println(err)
 				continue
 			}
 			go handleSession(conn)
 		}
 	}()
 
-	l, err := net.Listen("tcp", *smtp_port)
-	if err != nil {
-		log.Fatal(err)
-	}
-	go func() {
-		for {
-			conn, err := l.Accept()
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			go handleSession(conn)
-		}
-	}()
+	return nil
 
-	log.Println("ehlo server online")
-
-	select {}
 }
 
-func handleSession(conn net.Conn) {
+func (s *SmtpServer) Stop() error {
+	s.logger.Println("helo shutting down")
+	s.running = false
+}
+
+func (s *SmtpServer) handleSession(conn net.Conn) {
 	defer conn.Close()
 
 	r := NewReader(conn)
 	w := NewWriter(conn)
 
+	// SMTP COMMANDS
+	// http://tools.ietf.org/html/rfc821#page-29
+
+	// SEQUENCING OF COMMANDS AND REPLIES
+	// http://tools.ietf.org/html/rfc821#page-37
+
+	// CONNECTION ESTABLISHMENT
+	// S: 220
+	// F: 421
+	w.WriteStatus(StatusServiceReady)
+
 	for {
 		command, data, err := r.ReadCommand()
 		if err != nil {
-			log.Println(err)
-			w.WriteString(err.Error())
+			s.logger.Println(err)
+			w.WriteStatus(StatusRequestedActionAbortedInProcessing)
 			return
 		}
 
 		switch command {
 		// smtp
+
 		// HELO <SP> <domain> <CRLF>
+		// S: 250
+		// E: 500, 501, 504, 421
 		case CommandHelo:
-			w.WriteStatus()
-			// MAIL <SP> FROM:<reverse-path> <CRLF>
+			if len(data) == 0 {
+				w.WriteStatus(StatusSyntaxErrorInParametersOrArguments)
+			} else {
+				w.WriteReply(StatusOk, "helo at your service")
+			}
+
+		// MAIL <SP> FROM:<reverse-path> <CRLF>
+		// S: 250
+		// F: 552, 451, 452
+		// E: 500, 501, 421
 		case CommandMail:
-			// RCPT <SP> TO:<forward-path> <CRLF>
+
+		// RCPT <SP> TO:<forward-path> <CRLF>
+		// S: 250, 251
+		// F: 550, 551, 552, 553, 450, 451, 452
+		// E: 500, 501, 503, 421
 		case CommandRcpt:
-			// DATA <CRLF>
+
+		// DATA <CRLF>
+		// I: 354 -> data -> S: 250
+		//                   F: 552, 554, 451, 452
+		// F: 451, 554
+		// E: 500, 501, 503, 421
 		case CommandData:
-			// RSET <CRLF>
+
+		// RSET <CRLF>
+		// S: 250
+		// E: 500, 501, 504, 421
 		case CommandRset:
-			// SEND <SP> FROM:<reverse-path> <CRLF>
+
+		// SEND <SP> FROM:<reverse-path> <CRLF>
+		// S: 250
+		// F: 552, 451, 452
+		// E: 500, 501, 502, 421
 		case CommandSend:
-			// SOML <SP> FROM:<reverse-path> <CRLF>
+
+		// SOML <SP> FROM:<reverse-path> <CRLF>
+		// S: 250
+		// F: 552, 451, 452
+		// E: 500, 501, 502, 421
 		case CommandSoml:
-			// SAML <SP> FROM:<reverse-path> <CRLF>
+
+		// SAML <SP> FROM:<reverse-path> <CRLF>
+		// S: 250
+		// F: 552, 451, 452
+		// E: 500, 501, 502, 421
 		case CommandSaml:
-			// VRFY <SP> <string> <CRLF>
+
+		// VRFY <SP> <string> <CRLF>
+		// S: 250, 251
+		// F: 550, 551, 553
+		// E: 500, 501, 502, 504, 421
 		case CommandVrfy:
-			// EXPN <SP> <string> <CRLF>
+
+		// EXPN <SP> <string> <CRLF>
+		// S: 250
+		// F: 550
+		// E: 500, 501, 502, 504, 421
 		case CommandExpn:
-			// HELP [<SP> <string>] <CRLF>
+
+		// HELP [<SP> <string>] <CRLF>
+		// S: 211, 214
+		// E: 500, 501, 502, 504, 421
 		case CommandHelp:
-			// NOOP <CRLF>
+
+		// NOOP <CRLF>
+		// S: 250
+		// E: 500, 421
 		case CommandNoop:
-			// QUIT <CRLF>
+
+		// QUIT <CRLF>
+		// S: 221
+		// E: 500
 		case CommandQuit:
-			// TURN <CRLF>
+
+		// TURN <CRLF>
+		// S: 250
+		// F: 502
+		// E: 500, 503
 		case CommandTurn:
 
 		// esmtp:
@@ -143,6 +256,9 @@ func handleSession(conn net.Conn) {
 		case CommandSTARTTLS:
 			// SMTPUTF8 — Allow UTF-8 encoding in mailbox names and header fields, RFC 6531
 		case CommandSMTPUTF8:
+
+		default:
+			w.WriteStatus(StatusSyntaxErrorCommandUnrecognized)
 		}
 	}
 
