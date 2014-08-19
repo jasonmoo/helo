@@ -48,9 +48,10 @@ const (
 )
 
 var (
-	command_regexp = regexp.MustCompile("^([A-Za-z0-9]+) ?(.*)$")
-	email_regexp   = regexp.MustCompile("^(?:[Ff][Rr][Oo][Mm]|[Tt][Oo]):<([^>]+)>$")
-	data_regexp    = regexp.MustCompile("^(?s.+?)\r\n.\r\n$")
+	command_regexp    = regexp.MustCompile("^([A-Za-z0-9]+) ?(.*)$")
+	to_email_regexp   = regexp.MustCompile("^[Tt][Oo]:<([^>]+)>$")
+	from_email_regexp = regexp.MustCompile("^[Ff][Rr][Oo][Mm]:<([^>]+)>$")
+	data_regexp       = regexp.MustCompile("^(?s.+?)\r\n.\r\n$")
 
 	BadSyntaxError   = errors.New("bad syntax error")
 	MessageSizeError = errors.New("max message size exceeded")

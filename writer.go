@@ -77,11 +77,21 @@ func (w *Writer) WriteStatusf(code Status, val string) error {
 	_, err := fmt.Fprintf(w, response_codes[code], val)
 	return err
 }
+
+func (w *Writer) WriteReply(code Status, message string) error {
+	_, err := fmt.Fprintf(w, "%d %s\r\n", code, message)
+	return err
+}
+func (w *Writer) WriteReplyf(code Status, message string, args ...interface{}) error {
+	_, err := fmt.Fprintf(w, "%d "+message+"\r\n", code, args...)
+	return err
+}
+
 func (w *Writer) WriteContinuedReply(code Status, message string) error {
 	_, err := fmt.Fprintf(w, "%d-%s\r\n", code, message)
 	return err
 }
-func (w *Writer) WriteReply(code Status, message string) error {
-	_, err := fmt.Fprintf(w, "%d %s\r\n", code, message)
+func (w *Writer) WriteContinuedReplyf(code Status, message string, args ...interface{}) error {
+	_, err := fmt.Fprintf(w, "%d-"+message+"\r\n", code, args...)
 	return err
 }
