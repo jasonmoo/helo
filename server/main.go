@@ -22,11 +22,8 @@ var (
 	tls_key  = flag.String("tls_key", "cert/key.pem", "key for tls server")
 )
 
-func init() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-}
-
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	s := helo.NewSmtpServer(*smtp_host)
 	ss := helo.NewSmtpsServer(*smtps_host, *tls_cert, *tls_key)

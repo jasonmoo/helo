@@ -30,7 +30,7 @@ var (
 func NewSmtpServer(host string) *SmtpServer {
 	return &SmtpServer{
 		host:   host,
-		logger: log.New(os.Stdout, "helo: ", log.LstdFlags|log.Llongfile),
+		logger: log.New(os.Stdout, "helo: ", log.LstdFlags),
 	}
 }
 
@@ -146,6 +146,9 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 
 	for {
 		command, arg, err := r.ReadCommand()
+
+		s.logger.Println(command, arg)
+
 		switch err {
 		case MessageSizeError:
 			w.WriteReplyCode(ReplyRequestedMailActionAbortedExceededStorageAllocation)
@@ -380,8 +383,8 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 					w.WriteReplyCode(ReplyRequestedActionAbortedInProcessing)
 					return
 				case nil:
+					s.logger.Println(data)
 					message.Data = data
-					// log this
 					message = &Message{}
 					w.WriteReplyCode(ReplyOk)
 				}

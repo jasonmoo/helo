@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"regexp"
 	"strings"
@@ -65,32 +64,16 @@ func NewReader(conn net.Conn) *Reader {
 
 func (r *Reader) ReadCommand() (string, string, error) {
 
-	var (
-		data  []byte
-		total int
-	)
-
-	for {
-		d := make([]byte, 64)
-		n, err := r.Read(d)
-		if err != nil {
-			return "", "", err
-		}
-		total += n
-		if total > MaxMessageSize {
-			return "", "", MessageSizeError
-		}
-		data = append(data, d[:n]...)
-		fmt.Printf("%q\n", data)
-		if bytes.HasSuffix(data, []byte("\r\n")) {
-			break
-		}
+	data := make([]byte, 1<<10)
+	n, err := r.Read(data)
+	if err != nil {
+		return "", "", err
 	}
+	data = data[:n]
 
-	fmt.Println(command_regexp.FindSubmatch(data))
+	fmt.Printf("%q\n", data)
 
 	if matches := command_regexp.FindSubmatch(data); len(matches) == 3 {
-		log.Println("match found")
 		return strings.ToUpper(string(matches[1])), string(matches[2]), nil
 	}
 	return "", "", BadSyntaxError
@@ -115,7 +98,6 @@ func (r *Reader) ReadData() (string, error) {
 			return "", MessageSizeError
 		}
 		data = append(data, d[:n]...)
-		fmt.Printf("%q\n", data)
 		if bytes.HasSuffix(data, []byte("\r\n.\r\n")) {
 			break
 		}
