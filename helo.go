@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net"
+	"net/mail"
 	"os"
 )
 
@@ -105,7 +106,7 @@ func (s *SmtpsServer) StartTLS() error {
 				s.logger.Println(err)
 				continue
 			}
-			go handleSession(conn)
+			go s.handleSession(conn)
 		}
 	}()
 
@@ -113,7 +114,7 @@ func (s *SmtpsServer) StartTLS() error {
 
 }
 
-func (s *SmtpServer) Stop() error {
+func (s *SmtpServer) Stop() {
 	s.logger.Println("helo shutting down")
 	s.running = false
 }
@@ -130,21 +131,34 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 	// SEQUENCING OF COMMANDS AND REPLIES
 	// http://tools.ietf.org/html/rfc821#page-37
 
+	type Message struct {
+		To   string
+		From string
+		Data string
+	}
+
+	var message = &Message{}
+
 	// CONNECTION ESTABLISHMENT
 	// S: 220 helo Service ready
 	// F: 421 helo Service not available
-	w.WriteStatus(StatusServiceReady)
+	w.WriteReplyCode(ReplyServiceReady)
 
 	for {
 		command, arg, err := r.ReadCommand()
-		if err != nil {
-			if err == BadSyntaxError {
-				w.WriteStatus(StatusSyntaxErrorCommandUnrecognized)
-				continue
-			}
+		switch err {
+		case MessageSizeError:
+			w.WriteReplyCode(ReplyRequestedMailActionAbortedExceededStorageAllocation)
+			continue
+		case BadSyntaxError:
+			log.Println("here")
+			w.WriteReplyCode(ReplySyntaxErrorCommandUnrecognized)
+			continue
+		default:
 			s.logger.Println(err)
-			w.WriteStatus(StatusRequestedActionAbortedInProcessing)
+			w.WriteReplyCode(ReplyRequestedActionAbortedInProcessing)
 			return
+		case nil:
 		}
 
 		switch command {
@@ -171,7 +185,7 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// E: 500 Syntax error, command unrecognized
 			// E: 501 Syntax error in parameters or arguments
 			// E: 504 Command parameter not implemented
-			w.WriteReply(StatusOk, "helo at your service")
+			w.WriteReply(ReplyOk, "helo at your service")
 
 		case CommandMail:
 			// MAIL <SP> FROM:<reverse-path> <CRLF>
@@ -205,6 +219,13 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// F: 451 Requested action aborted: error in processing
 			// F: 452 Requested action not taken: insufficient system storage
 			// F: 552 Requested mail action aborted: exceeded storage allocation
+			matches := from_email_regexp.FindStringSubmatch(arg)
+			if len(matches) == 2 {
+				message.From = matches[1]
+				w.WriteReplyCode(ReplyOk)
+			} else {
+				w.WriteReplyCode(ReplySyntaxErrorInParametersOrArguments)
+			}
 
 		case CommandRcpt:
 			// RCPT <SP> TO:<forward-path> <CRLF>
@@ -254,6 +275,13 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// F: 551 User not local; please try %s
 			// F: 552 Requested mail action aborted: exceeded storage allocation
 			// F: 553 Requested action not taken: mailbox name not allowed
+			matches := to_email_regexp.FindStringSubmatch(arg)
+			if len(matches) == 2 {
+				message.To = matches[1]
+				w.WriteReplyCode(ReplyOk)
+			} else {
+				w.WriteReplyCode(ReplySyntaxErrorInParametersOrArguments)
+			}
 
 		case CommandData:
 			// DATA <CRLF>
@@ -289,7 +317,6 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			//
 			// When the receiver-SMTP makes the "final delivery" of a
 			// message it inserts at the beginning of the mail data a
-			//
 			// return path line.  The return path line preserves the
 			// information in the <reverse-path> from the MAIL command.
 			// Here, final delivery means the message leaves the SMTP
@@ -303,7 +330,7 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			//    handling mailbox rather than the message senders.
 			//
 			// The preceding two paragraphs imply that the final mail data
-			// will begin with a  return path line, followed by one or more
+			// will begin with a return path line, followed by one or more
 			// time stamp lines.  These lines will be followed by the mail
 			// data header and body [2].  See Example 8.
 			//
@@ -338,6 +365,27 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// E: 503 Bad sequence of commands
 			// F: 451 Requested action aborted: error in processing
 			// F: 554 Transaction failed
+			if len(message.From) == 0 || len(message.To) == 0 {
+				w.WriteReplyCode(ReplyBadSequenceOfCommands)
+			} else {
+				w.WriteReplyCode(ReplyStartMailInputEndWith)
+
+				switch data, err := r.ReadData(); err {
+				case MessageSizeError:
+					w.WriteReplyCode(ReplyRequestedMailActionAbortedExceededStorageAllocation)
+				case BadSyntaxError:
+					w.WriteReplyCode(ReplyTransactionFailed)
+				default:
+					s.logger.Println(err)
+					w.WriteReplyCode(ReplyRequestedActionAbortedInProcessing)
+					return
+				case nil:
+					message.Data = data
+					// log this
+					message = &Message{}
+					w.WriteReplyCode(ReplyOk)
+				}
+			}
 
 		case CommandRset:
 			// RSET <CRLF>
@@ -352,6 +400,8 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// E: 500 Syntax error, command unrecognized
 			// E: 501 Syntax error in parameters or arguments
 			// E: 504 Command parameter not implemented
+			message = &Message{}
+			w.WriteReplyCode(ReplyOk)
 
 		case CommandSend:
 			// SEND <SP> FROM:<reverse-path> <CRLF>
@@ -385,13 +435,13 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// F: 451 Requested action aborted: error in processing
 			// F: 452 Requested action not taken: insufficient system storage
 			// F: 552 Requested mail action aborted: exceeded storage allocation
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 
 		case CommandSoml:
 			// SOML <SP> FROM:<reverse-path> <CRLF>
 			//
 			// This command is used to initiate a mail transaction in which
 			// the mail data is delivered to one or more terminals or
-			//
 			// mailboxes. For each recipient the mail data is delivered to
 			// the recipient's terminal if the recipient is active on the
 			// host (and accepting terminal messages), otherwise to the
@@ -423,6 +473,7 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// F: 451 Requested action aborted: error in processing
 			// F: 452 Requested action not taken: insufficient system storage
 			// F: 552 Requested mail action aborted: exceeded storage allocation
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 
 		case CommandSaml:
 			// SAML <SP> FROM:<reverse-path> <CRLF>
@@ -461,6 +512,7 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// F: 451 Requested action aborted: error in processing
 			// F: 452 Requested action not taken: insufficient system storage
 			// F: 552 Requested mail action aborted: exceeded storage allocation
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 
 		case CommandVrfy:
 			// VRFY <SP> <string> <CRLF>
@@ -483,6 +535,12 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// F: 550 Requested action not taken: mailbox unavailable
 			// F: 551 User not local; please try %s
 			// F: 553 Requested action not taken: mailbox name not allowed
+			_, err := mail.ParseAddress(arg)
+			if err != nil {
+				w.WriteReplyCode(ReplySyntaxErrorInParametersOrArguments)
+			} else {
+				w.WriteReplyCode(ReplyOk)
+			}
 
 		case CommandExpn:
 			// EXPN <SP> <string> <CRLF>
@@ -503,6 +561,7 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// E: 502 Command not implemented
 			// E: 504 Command parameter not implemented
 			// F: 550 Requested action not taken: mailbox unavailable
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 
 		case CommandHelp:
 			// HELP [<SP> <string>] <CRLF>
@@ -522,6 +581,7 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// E: 501 Syntax error in parameters or arguments
 			// E: 502 Command not implemented
 			// E: 504 Command parameter not implemented
+			w.WriteReplyCode(ReplyHelpMessage)
 
 		case CommandNoop:
 			// NOOP <CRLF>
@@ -536,6 +596,7 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// S: 250 OK
 			// E: 421 helo Service not available
 			// E: 500 Syntax error, command unrecognized
+			w.WriteReplyCode(ReplyOk)
 
 		case CommandQuit:
 			// QUIT <CRLF>
@@ -557,6 +618,8 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			//
 			// S: 221 helo Service closing transmission channel
 			// E: 500 Syntax error, command unrecognized
+			w.WriteReplyCode(ReplyServiceClosingTransmissionChannel)
+			return
 
 		case CommandTurn:
 			// TURN <CRLF>
@@ -584,33 +647,45 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// E: 500 Syntax error, command unrecognized
 			// E: 503 Bad sequence of commands
 			// F: 502 Command not implemented
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 
 		// esmtp:
-		case CommandEHLO:
+		case CommandEhlo:
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// EHLO <domain> <CRLF>
-		case Command8BITMIME:
+		case Command8bitmime:
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// 8BITMIME — 8 bit data transmission, RFC 6152
-		case CommandATRN:
+		case CommandAtrn:
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// ATRN — Authenticated TURN for On-Demand Mail Relay, RFC 2645
-		case CommandAUTH:
+		case CommandAuth:
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// AUTH — Authenticated SMTP, RFC 4954
-		case CommandCHUNKING:
+		case CommandChunking:
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// CHUNKING — Chunking, RFC 3030
-		case CommandDSN:
+		case CommandDsn:
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// DSN — Delivery status notification, RFC 3461 (See Variable envelope return path)
-		case CommandETRN:
+		case CommandEtrn:
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// ETRN — Extended version of remote message queue starting command TURN, RFC 1985
-		case CommandPIPELINING:
+		case CommandPipelining:
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// PIPELINING — Command pipelining, RFC 2920
-		case CommandSIZE:
+		case CommandSize:
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// SIZE — Message size declaration, RFC 1870
-		case CommandSTARTTLS:
+		case CommandStarttls:
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// STARTTLS — Transport layer security, RFC 3207 (2002)
-		case CommandSMTPUTF8:
+		case CommandSmtputf8:
+			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// SMTPUTF8 — Allow UTF-8 encoding in mailbox names and header fields, RFC 6531
 
 		default:
-			w.WriteStatus(StatusSyntaxErrorCommandUnrecognized)
+			w.WriteReplyCode(ReplySyntaxErrorCommandUnrecognized)
 		}
 	}
 

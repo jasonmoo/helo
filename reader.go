@@ -2,10 +2,13 @@ package helo
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
-	"io"
+	"fmt"
+	"log"
 	"net"
 	"regexp"
+	"strings"
 )
 
 type (
@@ -48,28 +51,47 @@ const (
 )
 
 var (
-	command_regexp    = regexp.MustCompile("^([A-Za-z0-9]+) ?(.*)$")
+	command_regexp    = regexp.MustCompile("^([A-Za-z0-9]+) ?(.*)\r\n$")
 	to_email_regexp   = regexp.MustCompile("^[Tt][Oo]:<([^>]+)>$")
 	from_email_regexp = regexp.MustCompile("^[Ff][Rr][Oo][Mm]:<([^>]+)>$")
-	data_regexp       = regexp.MustCompile("^(?s.+?)\r\n.\r\n$")
 
 	BadSyntaxError   = errors.New("bad syntax error")
 	MessageSizeError = errors.New("max message size exceeded")
 )
 
 func NewReader(conn net.Conn) *Reader {
-	return Reader{bufio.NewReader(conn)}
+	return &Reader{bufio.NewReader(conn)}
 }
 
 func (r *Reader) ReadCommand() (string, string, error) {
 
-	data, err := r.consume(64)
-	if err != nil {
-		return "", "", err
+	var (
+		data  []byte
+		total int
+	)
+
+	for {
+		d := make([]byte, 64)
+		n, err := r.Read(d)
+		if err != nil {
+			return "", "", err
+		}
+		total += n
+		if total > MaxMessageSize {
+			return "", "", MessageSizeError
+		}
+		data = append(data, d[:n]...)
+		fmt.Printf("%q\n", data)
+		if bytes.HasSuffix(data, []byte("\r\n")) {
+			break
+		}
 	}
 
+	fmt.Println(command_regexp.FindSubmatch(data))
+
 	if matches := command_regexp.FindSubmatch(data); len(matches) == 3 {
-		return string(matches[1]), string(matches[2]), nil
+		log.Println("match found")
+		return strings.ToUpper(string(matches[1])), string(matches[2]), nil
 	}
 	return "", "", BadSyntaxError
 
@@ -77,42 +99,30 @@ func (r *Reader) ReadCommand() (string, string, error) {
 
 func (r *Reader) ReadData() (string, error) {
 
-	data, err := r.consume(1 << 10)
-	if err != nil {
-		return "", err
-	}
-
-	// match against expected data format (<data\r\n.\r\n>)
-	if matches := data_regexp.FindSubmatch(data, 1); len(matches) == 2 {
-		return string(matches[1]), nil
-	}
-	return "", BadSyntaxError
-
-}
-
-func (r *Reader) consume(chunk_size int) ([]byte, error) {
-
 	var (
 		data  []byte
 		total int
 	)
 
-	// consume data until end of tcp buffer
 	for {
-		d := make([]byte, chunk_size)
+		d := make([]byte, 24<<10)
 		n, err := r.Read(d)
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return data, err
+			return "", err
 		}
 		total += n
 		if total > MaxMessageSize {
-			return data, MessageSizeError
+			return "", MessageSizeError
 		}
 		data = append(data, d[:n]...)
+		fmt.Printf("%q\n", data)
+		if bytes.HasSuffix(data, []byte("\r\n.\r\n")) {
+			break
+		}
 	}
 
-	return data
+	dataString := string(data)
+
+	return strings.TrimSuffix(dataString, "\r\n.\r\n"), nil
+
 }

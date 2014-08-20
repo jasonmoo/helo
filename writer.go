@@ -1,97 +1,97 @@
 package helo
 
 import (
-	"bufio"
 	"fmt"
 	"net"
+	"strconv"
 )
 
 type (
 	Writer struct {
-		*bufio.Writer
+		net.Conn
 	}
-	Status int
+	Reply int
 )
 
 const (
-	StatusSystemStatus                                        Status = 211
-	StatusHelpMessage                                         Status = 214
-	StatusServiceReady                                        Status = 220
-	StatusServiceClosingTransmissionChannel                   Status = 221
-	StatusOk                                                  Status = 250
-	StatusUserNotLocalWillForwardTo                           Status = 251
-	StatusStartMailInputEndWith                               Status = 354
-	StatusServiceNotAvailable                                 Status = 421
-	StatusRequestedMailActionNotTakenMailboxUnavailable       Status = 450
-	StatusRequestedActionAbortedInProcessing                  Status = 451
-	StatusRequestedActionNotTakenInsufficientSystemStorage    Status = 452
-	StatusSyntaxErrorCommandUnrecognized                      Status = 500
-	StatusSyntaxErrorInParametersOrArguments                  Status = 501
-	StatusCommandNotImplemented                               Status = 502
-	StatusBadSequenceOfCommands                               Status = 503
-	StatusCommandParameterNotImplemented                      Status = 504
-	StatusRequestedActionNotTakenMailboxUnavailable           Status = 550
-	StatusUserNotLocalPleaseTry                               Status = 551
-	StatusRequestedMailActionAbortedExceededStorageAllocation Status = 552
-	StatusRequestedActionNotTakenMailboxNameNotAllowed        Status = 553
-	StatusTransactionFailed                                   Status = 554
+	ReplySystemReply                                         Reply = 211
+	ReplyHelpMessage                                         Reply = 214
+	ReplyServiceReady                                        Reply = 220
+	ReplyServiceClosingTransmissionChannel                   Reply = 221
+	ReplyOk                                                  Reply = 250
+	ReplyUserNotLocalWillForwardTo                           Reply = 251
+	ReplyStartMailInputEndWith                               Reply = 354
+	ReplyServiceNotAvailable                                 Reply = 421
+	ReplyRequestedMailActionNotTakenMailboxUnavailable       Reply = 450
+	ReplyRequestedActionAbortedInProcessing                  Reply = 451
+	ReplyRequestedActionNotTakenInsufficientSystemStorage    Reply = 452
+	ReplySyntaxErrorCommandUnrecognized                      Reply = 500
+	ReplySyntaxErrorInParametersOrArguments                  Reply = 501
+	ReplyCommandNotImplemented                               Reply = 502
+	ReplyBadSequenceOfCommands                               Reply = 503
+	ReplyCommandParameterNotImplemented                      Reply = 504
+	ReplyRequestedActionNotTakenMailboxUnavailable           Reply = 550
+	ReplyUserNotLocalPleaseTry                               Reply = 551
+	ReplyRequestedMailActionAbortedExceededStorageAllocation Reply = 552
+	ReplyRequestedActionNotTakenMailboxNameNotAllowed        Reply = 553
+	ReplyTransactionFailed                                   Reply = 554
 )
 
 var (
 	// REPLY CODES
 	// http://tools.ietf.org/html/rfc821#page-35
-	response_codes = map[Status]string{
-		StatusSystemStatus:                      "211 System status, or system help reply\r\n",
-		StatusHelpMessage:                       "214 Help message\r\n",
-		StatusServiceReady:                      "220 helo Service ready\r\n",
-		StatusServiceClosingTransmissionChannel: "221 helo Service closing transmission channel\r\n",
-		StatusOk:                                                  "250 OK\r\n",
-		StatusUserNotLocalWillForwardTo:                           "251 User not local; will forward to %s\r\n",
-		StatusStartMailInputEndWith:                               "354 Start mail input; end with <CRLF>.<CRLF>\r\n",
-		StatusServiceNotAvailable:                                 "421 helo Service not available\r\n",                           // closing transmission channel [This may be a reply to any command if the service knows it must shut down]
-		StatusRequestedMailActionNotTakenMailboxUnavailable:       "450 Requested mail action not taken: mailbox unavailable\r\n", // [E.g., mailbox busy]
-		StatusRequestedActionAbortedInProcessing:                  "451 Requested action aborted: error in processing\r\n",
-		StatusRequestedActionNotTakenInsufficientSystemStorage:    "452 Requested action not taken: insufficient system storage\r\n",
-		StatusSyntaxErrorCommandUnrecognized:                      "500 Syntax error, command unrecognized\r\n", // [This may include errors such as command line too long]
-		StatusSyntaxErrorInParametersOrArguments:                  "501 Syntax error in parameters or arguments\r\n",
-		StatusCommandNotImplemented:                               "502 Command not implemented\r\n",
-		StatusBadSequenceOfCommands:                               "503 Bad sequence of commands\r\n",
-		StatusCommandParameterNotImplemented:                      "504 Command parameter not implemented\r\n",
-		StatusRequestedActionNotTakenMailboxUnavailable:           "550 Requested action not taken: mailbox unavailable\r\n", // [E.g., mailbox not found, no access]
-		StatusUserNotLocalPleaseTry:                               "551 User not local; please try %s\r\n",
-		StatusRequestedMailActionAbortedExceededStorageAllocation: "552 Requested mail action aborted: exceeded storage allocation\r\n",
-		StatusRequestedActionNotTakenMailboxNameNotAllowed:        "553 Requested action not taken: mailbox name not allowed\r\n", // Requested action not taken: mailbox name not allowed
-		StatusTransactionFailed:                                   "554 Transaction failed\r\n",
+	reply_codes = map[Reply]string{
+		ReplySystemReply:                       "211 System status, or system help reply\r\n",
+		ReplyHelpMessage:                       "214 http://www.google.com/search?btnI&q=RFC+2821\r\n",
+		ReplyServiceReady:                      "220 helo Service ready\r\n",
+		ReplyServiceClosingTransmissionChannel: "221 helo Service closing transmission channel\r\n",
+		ReplyOk: "250 OK\r\n",
+		ReplyUserNotLocalWillForwardTo:                           "251 User not local; will forward to %s\r\n",
+		ReplyStartMailInputEndWith:                               "354 Start mail input; end with <CRLF>.<CRLF>\r\n",
+		ReplyServiceNotAvailable:                                 "421 helo Service not available\r\n",                           // closing transmission channel [This may be a reply to any command if the service knows it must shut down]
+		ReplyRequestedMailActionNotTakenMailboxUnavailable:       "450 Requested mail action not taken: mailbox unavailable\r\n", // [E.g., mailbox busy]
+		ReplyRequestedActionAbortedInProcessing:                  "451 Requested action aborted: error in processing\r\n",
+		ReplyRequestedActionNotTakenInsufficientSystemStorage:    "452 Requested action not taken: insufficient system storage\r\n",
+		ReplySyntaxErrorCommandUnrecognized:                      "500 Syntax error, command unrecognized\r\n", // [This may include errors such as command line too long]
+		ReplySyntaxErrorInParametersOrArguments:                  "501 Syntax error in parameters or arguments\r\n",
+		ReplyCommandNotImplemented:                               "502 Command not implemented\r\n",
+		ReplyBadSequenceOfCommands:                               "503 Bad sequence of commands\r\n",
+		ReplyCommandParameterNotImplemented:                      "504 Command parameter not implemented\r\n",
+		ReplyRequestedActionNotTakenMailboxUnavailable:           "550 Requested action not taken: mailbox unavailable\r\n", // [E.g., mailbox not found, no access]
+		ReplyUserNotLocalPleaseTry:                               "551 User not local; please try %s\r\n",
+		ReplyRequestedMailActionAbortedExceededStorageAllocation: "552 Requested mail action aborted: exceeded storage allocation\r\n",
+		ReplyRequestedActionNotTakenMailboxNameNotAllowed:        "553 Requested action not taken: mailbox name not allowed\r\n", // Requested action not taken: mailbox name not allowed
+		ReplyTransactionFailed:                                   "554 Transaction failed\r\n",
 	}
 )
 
 func NewWriter(conn net.Conn) *Writer {
-	return &Writer{bufio.NewWriter(conn)}
+	return &Writer{conn}
 }
 
-func (w *Writer) WriteStatus(code Status) error {
-	_, err := w.WriteString(response_codes[code])
+func (w *Writer) WriteReplyCode(code Reply) error {
+	_, err := fmt.Fprint(w, reply_codes[code])
 	return err
 }
-func (w *Writer) WriteStatusf(code Status, val string) error {
-	_, err := fmt.Fprintf(w, response_codes[code], val)
+func (w *Writer) WriteReplyCodef(code Reply, val string) error {
+	_, err := fmt.Fprintf(w, reply_codes[code], val)
 	return err
 }
 
-func (w *Writer) WriteReply(code Status, message string) error {
+func (w *Writer) WriteReply(code Reply, message string) error {
 	_, err := fmt.Fprintf(w, "%d %s\r\n", code, message)
 	return err
 }
-func (w *Writer) WriteReplyf(code Status, message string, args ...interface{}) error {
-	_, err := fmt.Fprintf(w, "%d "+message+"\r\n", code, args...)
+func (w *Writer) WriteReplyf(code Reply, message string, args ...interface{}) error {
+	_, err := fmt.Fprintf(w, strconv.Itoa(int(code))+" "+message+"\r\n", args...)
 	return err
 }
 
-func (w *Writer) WriteContinuedReply(code Status, message string) error {
+func (w *Writer) WriteContinuedReply(code Reply, message string) error {
 	_, err := fmt.Fprintf(w, "%d-%s\r\n", code, message)
 	return err
 }
-func (w *Writer) WriteContinuedReplyf(code Status, message string, args ...interface{}) error {
-	_, err := fmt.Fprintf(w, "%d-"+message+"\r\n", code, args...)
+func (w *Writer) WriteContinuedReplyf(code Reply, message string, args ...interface{}) error {
+	_, err := fmt.Fprintf(w, strconv.Itoa(int(code))+"- "+message+"\r\n", args...)
 	return err
 }
