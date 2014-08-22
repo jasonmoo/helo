@@ -65,10 +65,6 @@ var (
 	}
 )
 
-func NewWriter(conn net.Conn) *Writer {
-	return &Writer{conn}
-}
-
 func (w *Writer) WriteReplyCode(code Reply) error {
 	_, err := fmt.Fprint(w, reply_codes[code])
 	return err

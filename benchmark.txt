@@ -1,0 +1,26 @@
+helo: 2014/08/22 15:15:42 helo smtp starting up.
+helo: 2014/08/22 15:15:42 Listening on :9991
+helo: 2014/08/22 15:15:42 helo smtps starting up.
+helo: 2014/08/22 15:15:42 Listening on :9992
+=== RUN TestSendSmtp
+helo: 2014/08/22 15:15:42 "EHLO localhost\r\n"
+helo: 2014/08/22 15:15:42 "HELO localhost\r\n"
+helo: 2014/08/22 15:15:42 "MAIL FROM:<sender@example.org>\r\n"
+helo: 2014/08/22 15:15:42 "RCPT TO:<recipient@example.net>\r\n"
+helo: 2014/08/22 15:15:42 "DATA\r\n"
+helo: 2014/08/22 15:15:42 "This is the email body\r\n.\r\n"
+helo: 2014/08/22 15:15:42 "QUIT\r\n"
+--- PASS: TestSendSmtp (0.00 seconds)
+=== RUN TestSendSmtps
+helo: 2014/08/22 15:15:42 "EHLO localhost\r\n"
+helo: 2014/08/22 15:15:42 "HELO localhost\r\n"
+helo: 2014/08/22 15:15:42 "MAIL FROM:<sender@example.org>\r\n"
+helo: 2014/08/22 15:15:42 "RCPT TO:<recipient@example.net>\r\n"
+helo: 2014/08/22 15:15:42 "DATA\r\n"
+helo: 2014/08/22 15:15:42 "This is the email body\r\n.\r\n"
+helo: 2014/08/22 15:15:42 "QUIT\r\n"
+--- PASS: TestSendSmtps (0.02 seconds)
+PASS
+BenchmarkSendSmtp	   10000	    646004 ns/op	   46244 B/op	      87 allocs/op
+BenchmarkSendSmtps	     500	  17243298 ns/op	 1107675 B/op	    8182 allocs/op
+ok  	github.com/jasonmoo/helo	17.065s

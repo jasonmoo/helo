@@ -1,0 +1,1 @@
+go test -v -benchmem -benchtime 5s -bench . | tee benchmark.txt

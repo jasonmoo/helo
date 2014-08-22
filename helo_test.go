@@ -2,102 +2,127 @@ package helo
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"log"
 	"net/smtp"
 	"testing"
 )
 
-func TestSendSmtp(t *testing.T) {
+const (
+	SmtpTestHost  = ":9991"
+	SmtpsTestHost = ":9992"
 
-	c, err := smtp.Dial(":25")
+	Cert = "server/cert/cert.pem"
+	Key  = "server/cert/key.pem"
+)
+
+var (
+	s  *SmtpServer
+	ss *SmtpsServer
+)
+
+func init() {
+	s = NewSmtpServer(SmtpTestHost)
+	ss = NewSmtpsServer(SmtpsTestHost, Cert, Key)
+
+	err := s.Start()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Set the sender and recipient first
-	if err := c.Mail("sender@example.org"); err != nil {
+	err = ss.Start()
+	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func TestSendSmtp(t *testing.T) {
+
+	c, err := smtp.Dial(SmtpTestHost)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Set the sender and recipient first
+	if err := c.Mail("sender@example.org"); err != nil {
+		t.Error(err)
+	}
 	if err := c.Rcpt("recipient@example.net"); err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
 
 	// Send the email body.
 	wc, err := c.Data()
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
 	_, err = fmt.Fprintf(wc, "This is the email body")
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
 	err = wc.Close()
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
 
 	// Send the QUIT command and close the connection.
 	err = c.Quit()
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
 
 }
 
 func TestSendSmtps(t *testing.T) {
 
-	tlsconfig := &tls.Config{
-		InsecureSkipVerify: true,
-		ServerName:         ":465",
-		RootCAs:            x509.NewCertPool(),
+	conn, err := tls.Dial("tcp", SmtpsTestHost, &tls.Config{InsecureSkipVerify: true})
+	if err != nil {
+		t.Error(err)
 	}
 
-	conn, err := tls.Dial("tcp", tlsconfig.ServerName, tlsconfig)
+	c, err := smtp.NewClient(conn, SmtpsTestHost)
 	if err != nil {
-		log.Panic(err)
-	}
-
-	c, err := smtp.NewClient(conn, tlsconfig.ServerName)
-	if err != nil {
-		log.Panic(err)
+		t.Error(err)
 	}
 
 	// Set the sender and recipient first
 	if err := c.Mail("sender@example.org"); err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
 	if err := c.Rcpt("recipient@example.net"); err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
 
 	// Send the email body.
 	wc, err := c.Data()
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
 	_, err = fmt.Fprintf(wc, "This is the email body")
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
 	err = wc.Close()
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
 
 	// Send the QUIT command and close the connection.
 	err = c.Quit()
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
 
 }
 
 func BenchmarkSendSmtp(b *testing.B) {
 
+	s.SetLogger(nil)
+
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
-		c, err := smtp.Dial(":25")
+		c, err := smtp.Dial(SmtpTestHost)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -132,16 +157,19 @@ func BenchmarkSendSmtp(b *testing.B) {
 	}
 
 }
+
 func BenchmarkSendSmtps(b *testing.B) {
 
 	tlsconfig := &tls.Config{
 		InsecureSkipVerify: true,
-		ServerName:         ":465",
-		RootCAs:            x509.NewCertPool(),
 	}
 
+	ss.SetLogger(nil)
+
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
-		conn, err := tls.Dial("tcp", tlsconfig.ServerName, tlsconfig)
+		conn, err := tls.Dial("tcp", SmtpsTestHost, tlsconfig)
 		if err != nil {
 			log.Panic(err)
 		}

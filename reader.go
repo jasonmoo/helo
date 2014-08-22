@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"fmt"
-	"net"
 	"regexp"
 	"strings"
 )
@@ -13,6 +11,7 @@ import (
 type (
 	Reader struct {
 		*bufio.Reader
+		s *SmtpServer
 	}
 )
 
@@ -58,10 +57,6 @@ var (
 	MessageSizeError = errors.New("max message size exceeded")
 )
 
-func NewReader(conn net.Conn) *Reader {
-	return &Reader{bufio.NewReader(conn)}
-}
-
 func (r *Reader) ReadCommand() (string, string, error) {
 
 	data := make([]byte, 1<<10)
@@ -71,7 +66,7 @@ func (r *Reader) ReadCommand() (string, string, error) {
 	}
 	data = data[:n]
 
-	fmt.Printf("%q\n", data)
+	r.s.logf("%q", data)
 
 	if matches := command_regexp.FindSubmatch(data); len(matches) == 3 {
 		return strings.ToUpper(string(matches[1])), string(matches[2]), nil
@@ -102,6 +97,8 @@ func (r *Reader) ReadData() (string, error) {
 			break
 		}
 	}
+
+	r.s.logf("%q", data)
 
 	dataString := string(data)
 
