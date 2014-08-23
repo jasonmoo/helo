@@ -107,7 +107,11 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// F: 552 Requested mail action aborted: exceeded storage allocation
 			matches := from_email_regexp.FindStringSubmatch(arg)
 			if len(matches) == 2 {
-				message.From = matches[1]
+				if len(message.From) == 0 {
+					message.From = matches[1]
+				} else {
+					message.From += "," + matches[1]
+				}
 				w.WriteReplyCode(ReplyOk)
 			} else {
 				w.WriteReplyCode(ReplySyntaxErrorInParametersOrArguments)
@@ -466,7 +470,11 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 			// E: 501 Syntax error in parameters or arguments
 			// E: 502 Command not implemented
 			// E: 504 Command parameter not implemented
-			w.WriteReplyCode(ReplyHelpMessage)
+			if len(arg) > 0 {
+				w.WriteReplyCode(ReplyCommandParameterNotImplemented)
+			} else {
+				w.WriteReplyCode(ReplyHelpMessage)
+			}
 
 		case CommandNoop:
 			// NOOP <CRLF>
@@ -536,8 +544,18 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 
 		// esmtp:
 		case CommandEhlo:
-			w.WriteReplyCode(ReplyCommandNotImplemented)
-			// EHLO <domain> <CRLF>
+			// EHLO <SP> <domain> <CRLF>
+			// Response bnf
+			// ehlo-ok-rsp  ::=      "250"    domain [ SP greeting ] CR LF
+			//                / (    "250-"   domain [ SP greeting ] CR LF
+			//                    *( "250-"      ehlo-line           CR LF )
+			//                       "250"    SP ehlo-line           CR LF   )
+			w.WriteContinuedReply(ReplyOk, "helo at your service")
+			// SIZE — Message size declaration, RFC 1870
+			w.WriteContinuedReply(ReplyOk, "SIZE %d", MaxMessageSize)
+			// SMTPUTF8 — Allow UTF-8 encoding in mailbox names and header fields, RFC 6531
+			w.WriteReply(ReplyOk, "SMTPUTF8")
+
 		case Command8bitmime:
 			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// 8BITMIME — 8 bit data transmission, RFC 6152
@@ -559,15 +577,9 @@ func (s *SmtpServer) handleSession(conn net.Conn) {
 		case CommandPipelining:
 			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// PIPELINING — Command pipelining, RFC 2920
-		case CommandSize:
-			w.WriteReplyCode(ReplyCommandNotImplemented)
-			// SIZE — Message size declaration, RFC 1870
 		case CommandStarttls:
 			w.WriteReplyCode(ReplyCommandNotImplemented)
 			// STARTTLS — Transport layer security, RFC 3207 (2002)
-		case CommandSmtputf8:
-			w.WriteReplyCode(ReplyCommandNotImplemented)
-			// SMTPUTF8 — Allow UTF-8 encoding in mailbox names and header fields, RFC 6531
 
 		default:
 			w.WriteReplyCode(ReplySyntaxErrorCommandUnrecognized)

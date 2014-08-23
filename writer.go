@@ -9,6 +9,7 @@ import (
 type (
 	Writer struct {
 		net.Conn
+		s *SmtpServer
 	}
 	Reply int
 )
@@ -65,29 +66,26 @@ var (
 	}
 )
 
-func (w *Writer) WriteReplyCode(code Reply) error {
-	_, err := fmt.Fprint(w, reply_codes[code])
-	return err
-}
-func (w *Writer) WriteReplyCodef(code Reply, val string) error {
-	_, err := fmt.Fprintf(w, reply_codes[code], val)
+func (w *Writer) WriteReplyCode(code Reply, args ...interface{}) error {
+	if w.s.logger != nil {
+		w.s.logf(">>> %q", fmt.Sprintf(reply_codes[code], args...))
+	}
+	_, err := fmt.Fprintf(w, reply_codes[code], args...)
 	return err
 }
 
-func (w *Writer) WriteReply(code Reply, message string) error {
-	_, err := fmt.Fprintf(w, "%d %s\r\n", code, message)
-	return err
-}
-func (w *Writer) WriteReplyf(code Reply, message string, args ...interface{}) error {
+func (w *Writer) WriteReply(code Reply, message string, args ...interface{}) error {
+	if w.s.logger != nil {
+		w.s.logf(">>> %q", fmt.Sprintf(strconv.Itoa(int(code))+" "+message+"\r\n", args...))
+	}
 	_, err := fmt.Fprintf(w, strconv.Itoa(int(code))+" "+message+"\r\n", args...)
 	return err
 }
 
-func (w *Writer) WriteContinuedReply(code Reply, message string) error {
-	_, err := fmt.Fprintf(w, "%d-%s\r\n", code, message)
-	return err
-}
-func (w *Writer) WriteContinuedReplyf(code Reply, message string, args ...interface{}) error {
-	_, err := fmt.Fprintf(w, strconv.Itoa(int(code))+"- "+message+"\r\n", args...)
+func (w *Writer) WriteContinuedReply(code Reply, message string, args ...interface{}) error {
+	if w.s.logger != nil {
+		w.s.logf(">>> %q", fmt.Sprintf(strconv.Itoa(int(code))+"-"+message+"\r\n", args...))
+	}
+	_, err := fmt.Fprintf(w, strconv.Itoa(int(code))+"-"+message+"\r\n", args...)
 	return err
 }

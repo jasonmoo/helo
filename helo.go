@@ -29,7 +29,7 @@ var (
 func NewSmtpServer(host string) *SmtpServer {
 	return &SmtpServer{
 		host:   host,
-		logger: log.New(os.Stdout, "helo: ", log.LstdFlags),
+		logger: log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds),
 	}
 }
 
@@ -46,7 +46,7 @@ func (s *SmtpServer) newReader(conn net.Conn) *Reader {
 }
 
 func (s *SmtpServer) newWriter(conn net.Conn) *Writer {
-	return &Writer{conn}
+	return &Writer{conn, s}
 }
 
 func (s *SmtpServer) log(data interface{}) {

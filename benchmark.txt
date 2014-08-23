@@ -1,26 +1,42 @@
-helo: 2014/08/22 15:15:42 helo smtp starting up.
-helo: 2014/08/22 15:15:42 Listening on :9991
-helo: 2014/08/22 15:15:42 helo smtps starting up.
-helo: 2014/08/22 15:15:42 Listening on :9992
+2014/08/22 21:40:19.417438 helo smtp starting up.
+2014/08/22 21:40:19.417637 Listening on :9991
+2014/08/22 21:40:19.570338 helo smtps starting up.
+2014/08/22 21:40:19.570348 Listening on :9992
 === RUN TestSendSmtp
-helo: 2014/08/22 15:15:42 "EHLO localhost\r\n"
-helo: 2014/08/22 15:15:42 "HELO localhost\r\n"
-helo: 2014/08/22 15:15:42 "MAIL FROM:<sender@example.org>\r\n"
-helo: 2014/08/22 15:15:42 "RCPT TO:<recipient@example.net>\r\n"
-helo: 2014/08/22 15:15:42 "DATA\r\n"
-helo: 2014/08/22 15:15:42 "This is the email body\r\n.\r\n"
-helo: 2014/08/22 15:15:42 "QUIT\r\n"
+2014/08/22 21:40:19.571989 >>> "220 helo Service ready\r\n"
+2014/08/22 21:40:19.572198 <<< "EHLO localhost\r\n"
+2014/08/22 21:40:19.572307 >>> "250-helo at your service\r\n"
+2014/08/22 21:40:19.572363 >>> "250-SIZE 33554432\r\n"
+2014/08/22 21:40:19.572395 >>> "250 SMTPUTF8\r\n"
+2014/08/22 21:40:19.572532 <<< "MAIL FROM:<sender@example.org>\r\n"
+2014/08/22 21:40:19.572585 >>> "250 OK\r\n"
+2014/08/22 21:40:19.572702 <<< "RCPT TO:<recipient@example.net>\r\n"
+2014/08/22 21:40:19.572742 >>> "250 OK\r\n"
+2014/08/22 21:40:19.572863 <<< "DATA\r\n"
+2014/08/22 21:40:19.572892 >>> "354 Start mail input; end with <CRLF>.<CRLF>\r\n"
+2014/08/22 21:40:19.573023 <<< "This is the email body\r\n.\r\n"
+2014/08/22 21:40:19.573038 >>> "250 OK\r\n"
+2014/08/22 21:40:19.573180 <<< "QUIT\r\n"
+2014/08/22 21:40:19.573214 >>> "221 helo Service closing transmission channel\r\n"
 --- PASS: TestSendSmtp (0.00 seconds)
 === RUN TestSendSmtps
-helo: 2014/08/22 15:15:42 "EHLO localhost\r\n"
-helo: 2014/08/22 15:15:42 "HELO localhost\r\n"
-helo: 2014/08/22 15:15:42 "MAIL FROM:<sender@example.org>\r\n"
-helo: 2014/08/22 15:15:42 "RCPT TO:<recipient@example.net>\r\n"
-helo: 2014/08/22 15:15:42 "DATA\r\n"
-helo: 2014/08/22 15:15:42 "This is the email body\r\n.\r\n"
-helo: 2014/08/22 15:15:42 "QUIT\r\n"
+2014/08/22 21:40:19.574634 >>> "220 helo Service ready\r\n"
+2014/08/22 21:40:19.592270 <<< "EHLO localhost\r\n"
+2014/08/22 21:40:19.592307 >>> "250-helo at your service\r\n"
+2014/08/22 21:40:19.592323 >>> "250-SIZE 33554432\r\n"
+2014/08/22 21:40:19.592333 >>> "250 SMTPUTF8\r\n"
+2014/08/22 21:40:19.592467 <<< "MAIL FROM:<sender@example.org>\r\n"
+2014/08/22 21:40:19.592491 >>> "250 OK\r\n"
+2014/08/22 21:40:19.592646 <<< "RCPT TO:<recipient@example.net>\r\n"
+2014/08/22 21:40:19.592688 >>> "250 OK\r\n"
+2014/08/22 21:40:19.592783 <<< "DATA\r\n"
+2014/08/22 21:40:19.592803 >>> "354 Start mail input; end with <CRLF>.<CRLF>\r\n"
+2014/08/22 21:40:19.592933 <<< "This is the email body\r\n.\r\n"
+2014/08/22 21:40:19.592943 >>> "250 OK\r\n"
+2014/08/22 21:40:19.593050 <<< "QUIT\r\n"
+2014/08/22 21:40:19.593087 >>> "221 helo Service closing transmission channel\r\n"
 --- PASS: TestSendSmtps (0.02 seconds)
 PASS
-BenchmarkSendSmtp	   10000	    646004 ns/op	   46244 B/op	      87 allocs/op
-BenchmarkSendSmtps	     500	  17243298 ns/op	 1107675 B/op	    8182 allocs/op
-ok  	github.com/jasonmoo/helo	17.065s
+BenchmarkSendSmtp	   10000	   2278702 ns/op	   45508 B/op	      83 allocs/op
+BenchmarkSendSmtps	     500	  17839405 ns/op	 1107632 B/op	    8183 allocs/op
+ok  	github.com/jasonmoo/helo	33.801s

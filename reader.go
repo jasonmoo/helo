@@ -49,9 +49,10 @@ const (
 )
 
 var (
-	command_regexp    = regexp.MustCompile("^([A-Za-z0-9]+) ?(.*)\r\n$")
-	to_email_regexp   = regexp.MustCompile("^[Tt][Oo]:<([^>]+)>$")
-	from_email_regexp = regexp.MustCompile("^[Ff][Rr][Oo][Mm]:<([^>]+)>$")
+	command_regexp  = regexp.MustCompile("^([A-Za-z0-9]+) ?(.*)\r\n$")
+	to_email_regexp = regexp.MustCompile("^[Tt][Oo]:<([^>]+)>$")
+	// SIZE unused in this context
+	from_email_regexp = regexp.MustCompile(`^[Ff][Rr][Oo][Mm]:<([^>]+)>(?: [Ss][Ii][Zz][Ee]=\d+)?$`)
 
 	BadSyntaxError   = errors.New("bad syntax error")
 	MessageSizeError = errors.New("max message size exceeded")
@@ -66,7 +67,7 @@ func (r *Reader) ReadCommand() (string, string, error) {
 	}
 	data = data[:n]
 
-	r.s.logf("%q", data)
+	r.s.logf("<<< %q", data)
 
 	if matches := command_regexp.FindSubmatch(data); len(matches) == 3 {
 		return strings.ToUpper(string(matches[1])), string(matches[2]), nil
@@ -98,7 +99,7 @@ func (r *Reader) ReadData() (string, error) {
 		}
 	}
 
-	r.s.logf("%q", data)
+	r.s.logf("<<< %q", data)
 
 	dataString := string(data)
 

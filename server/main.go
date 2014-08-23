@@ -23,6 +23,8 @@ var (
 )
 
 func main() {
+	flag.Parse()
+
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	s := helo.NewSmtpServer(*smtp_host)
