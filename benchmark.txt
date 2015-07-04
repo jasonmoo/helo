@@ -1,42 +1,42 @@
-2014/08/22 21:40:19.417438 helo smtp starting up.
-2014/08/22 21:40:19.417637 Listening on :9991
-2014/08/22 21:40:19.570338 helo smtps starting up.
-2014/08/22 21:40:19.570348 Listening on :9992
+2015/07/04 12:43:35.752971 helo smtp starting up.
+2015/07/04 12:43:35.753168 Listening on :9991
+2015/07/04 12:43:35.777776 helo smtps starting up.
+2015/07/04 12:43:35.777788 Listening on :9992
 === RUN TestSendSmtp
-2014/08/22 21:40:19.571989 >>> "220 helo Service ready\r\n"
-2014/08/22 21:40:19.572198 <<< "EHLO localhost\r\n"
-2014/08/22 21:40:19.572307 >>> "250-helo at your service\r\n"
-2014/08/22 21:40:19.572363 >>> "250-SIZE 33554432\r\n"
-2014/08/22 21:40:19.572395 >>> "250 SMTPUTF8\r\n"
-2014/08/22 21:40:19.572532 <<< "MAIL FROM:<sender@example.org>\r\n"
-2014/08/22 21:40:19.572585 >>> "250 OK\r\n"
-2014/08/22 21:40:19.572702 <<< "RCPT TO:<recipient@example.net>\r\n"
-2014/08/22 21:40:19.572742 >>> "250 OK\r\n"
-2014/08/22 21:40:19.572863 <<< "DATA\r\n"
-2014/08/22 21:40:19.572892 >>> "354 Start mail input; end with <CRLF>.<CRLF>\r\n"
-2014/08/22 21:40:19.573023 <<< "This is the email body\r\n.\r\n"
-2014/08/22 21:40:19.573038 >>> "250 OK\r\n"
-2014/08/22 21:40:19.573180 <<< "QUIT\r\n"
-2014/08/22 21:40:19.573214 >>> "221 helo Service closing transmission channel\r\n"
---- PASS: TestSendSmtp (0.00 seconds)
+2015/07/04 12:43:35.778211 >>> "220 helo Service ready\r\n"
+2015/07/04 12:43:35.778354 <<< "EHLO localhost\r\n"
+2015/07/04 12:43:35.778413 >>> "250-helo at your service\r\n"
+2015/07/04 12:43:35.778452 >>> "250-SIZE 33554432\r\n"
+2015/07/04 12:43:35.778497 >>> "250 SMTPUTF8\r\n"
+2015/07/04 12:43:35.778568 <<< "MAIL FROM:<sender@example.org>\r\n"
+2015/07/04 12:43:35.778634 >>> "250 OK\r\n"
+2015/07/04 12:43:35.778722 <<< "RCPT TO:<recipient@example.net>\r\n"
+2015/07/04 12:43:35.778778 >>> "250 OK\r\n"
+2015/07/04 12:43:35.778860 <<< "DATA\r\n"
+2015/07/04 12:43:35.778877 >>> "354 Start mail input; end with <CRLF>.<CRLF>\r\n"
+2015/07/04 12:43:35.778972 <<< "This is the email body\r\n.\r\n"
+2015/07/04 12:43:35.778983 >>> "250 OK\r\n"
+2015/07/04 12:43:35.779081 <<< "QUIT\r\n"
+2015/07/04 12:43:35.779111 >>> "221 helo Service closing transmission channel\r\n"
+--- PASS: TestSendSmtp (0.00s)
 === RUN TestSendSmtps
-2014/08/22 21:40:19.574634 >>> "220 helo Service ready\r\n"
-2014/08/22 21:40:19.592270 <<< "EHLO localhost\r\n"
-2014/08/22 21:40:19.592307 >>> "250-helo at your service\r\n"
-2014/08/22 21:40:19.592323 >>> "250-SIZE 33554432\r\n"
-2014/08/22 21:40:19.592333 >>> "250 SMTPUTF8\r\n"
-2014/08/22 21:40:19.592467 <<< "MAIL FROM:<sender@example.org>\r\n"
-2014/08/22 21:40:19.592491 >>> "250 OK\r\n"
-2014/08/22 21:40:19.592646 <<< "RCPT TO:<recipient@example.net>\r\n"
-2014/08/22 21:40:19.592688 >>> "250 OK\r\n"
-2014/08/22 21:40:19.592783 <<< "DATA\r\n"
-2014/08/22 21:40:19.592803 >>> "354 Start mail input; end with <CRLF>.<CRLF>\r\n"
-2014/08/22 21:40:19.592933 <<< "This is the email body\r\n.\r\n"
-2014/08/22 21:40:19.592943 >>> "250 OK\r\n"
-2014/08/22 21:40:19.593050 <<< "QUIT\r\n"
-2014/08/22 21:40:19.593087 >>> "221 helo Service closing transmission channel\r\n"
---- PASS: TestSendSmtps (0.02 seconds)
+2015/07/04 12:43:35.779814 >>> "220 helo Service ready\r\n"
+2015/07/04 12:43:35.789754 <<< "EHLO localhost\r\n"
+2015/07/04 12:43:35.789789 >>> "250-helo at your service\r\n"
+2015/07/04 12:43:35.789822 >>> "250-SIZE 33554432\r\n"
+2015/07/04 12:43:35.789854 >>> "250 SMTPUTF8\r\n"
+2015/07/04 12:43:35.789955 <<< "MAIL FROM:<sender@example.org>\r\n"
+2015/07/04 12:43:35.789988 >>> "250 OK\r\n"
+2015/07/04 12:43:35.790066 <<< "RCPT TO:<recipient@example.net>\r\n"
+2015/07/04 12:43:35.790094 >>> "250 OK\r\n"
+2015/07/04 12:43:35.790190 <<< "DATA\r\n"
+2015/07/04 12:43:35.790214 >>> "354 Start mail input; end with <CRLF>.<CRLF>\r\n"
+2015/07/04 12:43:35.790314 <<< "This is the email body\r\n.\r\n"
+2015/07/04 12:43:35.790324 >>> "250 OK\r\n"
+2015/07/04 12:43:35.790434 <<< "QUIT\r\n"
+2015/07/04 12:43:35.790452 >>> "221 helo Service closing transmission channel\r\n"
+--- PASS: TestSendSmtps (0.01s)
 PASS
-BenchmarkSendSmtp	   10000	   2278702 ns/op	   45508 B/op	      83 allocs/op
-BenchmarkSendSmtps	     500	  17839405 ns/op	 1107632 B/op	    8183 allocs/op
-ok  	github.com/jasonmoo/helo	33.801s
+BenchmarkSendSmtp	   10000	    808206 ns/op	   46072 B/op	     125 allocs/op
+BenchmarkSendSmtps	    1000	   9785788 ns/op	  282738 B/op	    3725 allocs/op
+ok  	github.com/jasonmoo/helo	18.985s
