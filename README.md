@@ -1,8 +1,8 @@
 #helo
-a discarding stmp/s server. 
+a discarding stmp/s server.
 
 
-helo represents the the full helo [smtp spec](https://tools.ietf.org/html/rfc5321) and portions ehlo (extended spec).  It discards all incoming commands, while sending the correct response.
+helo represents the full helo [smtp spec](https://tools.ietf.org/html/rfc5321) and portions ehlo (extended spec).  It discards all incoming commands, while sending the correct response.
 
 for use as a benchmarking/testing server.
 
